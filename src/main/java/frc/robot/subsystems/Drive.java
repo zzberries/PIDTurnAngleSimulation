@@ -151,32 +151,7 @@ public class Drive extends SubsystemBase {
     ahrs.reset();
   }
 
-  public Rotation2d getHeading() {
-    return Rotation2d.fromDegrees(-ahrs.getYaw());
-  }
-
-  //Encoder Methods
-  public Encoder getLeftEncoder() {
-    return leftEncoder;
-  }
-
-  public Encoder getRightEncoder() {
-    return rightEncoder;
-  }
-
-  //Kinematics Methods
-  public Pose2d getPose() {
-    return m_odometry.getPoseMeters();
-    //return pose;
-  }
-
-  public DifferentialDriveWheelSpeeds getWheelSpeeds() {
-    return new DifferentialDriveWheelSpeeds(leftEncoder.getRate(), rightEncoder.getRate());
-  }
-
   public void resetOdometry(Pose2d pose) {
-    leftEncoder.reset();
-    rightEncoder.reset();
     //m_odometry.resetPosition(pose, getHeading());
     m_odometry.resetPosition(m_odometry.getPoseMeters(), getHeading());
   }
