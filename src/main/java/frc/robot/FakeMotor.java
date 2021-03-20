@@ -10,7 +10,7 @@ public class FakeMotor {
     double m_speed;
     double m_motor_id;
 
-    FakeMotor(int motor_id) {
+    public FakeMotor(int motor_id) {
         m_motor_id = motor_id;
         m_speed = 0;
     }

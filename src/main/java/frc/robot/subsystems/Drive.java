@@ -7,20 +7,13 @@
 
 package frc.robot.subsystems;
 
-import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.controller.PIDController;
-import edu.wpi.first.wpilibj.controller.SimpleMotorFeedforward;
-import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.geometry.Pose2d;
-import edu.wpi.first.wpilibj.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.kinematics.DifferentialDriveKinematics;
-import edu.wpi.first.wpilibj.kinematics.DifferentialDriveOdometry;
-import edu.wpi.first.wpilibj.kinematics.DifferentialDriveWheelSpeeds;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
-import frc.robot.Constants;
+import frc.robot.FakeDriveTrain;
+import frc.robot.FakeMotor;
+import frc.robot.FakeNavx;
 import frc.robot.RobotMap;
 import frc.robot.TestingDashboard;
 
@@ -38,18 +31,15 @@ public class Drive extends SubsystemBase {
   public final double INCHES_PER_PULSE = (WHEEL_SIZE * Math.PI)/PULSES_PER_ROTATION;
   public final static double INITIAL_SPEED = 0.3;
 
-  private DifferentialDrive drivetrain;
+  private FakeDriveTrain drivetrain;
 
-  private AHRS ahrs;
+  private FakeNavx ahrs;
 
   private static Drive drive;
 
-  private DifferentialDriveKinematics m_kinematics;
-  private DifferentialDriveOdometry m_odometry;
-  private SimpleMotorFeedforward m_feedforward;
+  private double m_leftSpeed;
+  private double m_rightSpeed;
 
-  private PIDController leftPidController = new PIDController(Constants.kPDriveVel, 0, 0);
-  private PIDController rightPidController = new PIDController(Constants.kPDriveVel, 0, 0);
 
   // private Pose2d pose;
 
@@ -57,28 +47,17 @@ public class Drive extends SubsystemBase {
    * Creates a new Drive.
    */
   private Drive() {
-    frontLeft = new VictorSPX(RobotMap.D_FRONT_LEFT);
-    frontRight = new VictorSPX(RobotMap.D_FRONT_RIGHT);
-    backLeft = new WPI_TalonSRX(RobotMap.D_BACK_LEFT);
-    backRight = new WPI_TalonSRX(RobotMap.D_BACK_RIGHT);
+    frontLeft = new FakeMotor(RobotMap.D_FRONT_LEFT);
+    frontRight = new FakeMotor(RobotMap.D_FRONT_RIGHT);
+    backLeft = new FakeMotor(RobotMap.D_BACK_LEFT);
+    backRight = new FakeMotor(RobotMap.D_BACK_RIGHT);
 
-    leftEncoder = new Encoder(RobotMap.D_LEFT_ENCODER_A, RobotMap.D_LEFT_ENCODER_B);
-    rightEncoder = new Encoder(RobotMap.D_RIGHT_ENCODER_A, RobotMap.D_RIGHT_ENCODER_B);
-    leftEncoder.setDistancePerPulse(INCHES_PER_PULSE);
-    rightEncoder.setDistancePerPulse(INCHES_PER_PULSE);
+    ahrs = new FakeNavx(RobotMap.D_NAVX);
 
-    frontLeft.follow(backLeft);
-    frontRight.follow(backRight);
-    frontRight.setInverted(true);
-
-    ahrs = new AHRS(RobotMap.D_NAVX);
-
-    drivetrain = new DifferentialDrive(backLeft, backRight);
-
-    m_kinematics = new DifferentialDriveKinematics(Constants.kTrackwidthMeters);
-    m_odometry = new DifferentialDriveOdometry(Rotation2d.fromDegrees(getRoll()));
-    m_feedforward = new SimpleMotorFeedforward(Constants.ksVolts, Constants.kvVoltSecondsPerMeter,
-        Constants.kaVoltSecondsSquaredPerMeter);
+    drivetrain = new FakeDriveTrain(backLeft, backRight, frontLeft, frontRight);
+    
+    m_leftSpeed = 0;
+    m_rightSpeed = 0;
   }
 
   /**
@@ -100,6 +79,10 @@ public class Drive extends SubsystemBase {
       TestingDashboard.getInstance().registerNumber(drive, "Turn", "SpeedWhenTurning", 0);
       TestingDashboard.getInstance().registerNumber(drive, "Turn", "CurrentYawAngle", 0);
       TestingDashboard.getInstance().registerNumber(drive, "Turn", "InitialAngle", 0);
+      TestingDashboard.getInstance().registerNumber(drive, "Turn", "m_leftSpeed", 0);
+      TestingDashboard.getInstance().registerNumber(drive, "Turn", "m_rightSpeed", 0);
+
+
 
 
     }
@@ -109,28 +92,10 @@ public class Drive extends SubsystemBase {
   // Drive Methods
   public void tankDrive(double leftSpeed, double rightSpeed) {
     drivetrain.tankDrive(leftSpeed, rightSpeed);
-    TestingDashboard.getInstance().updateNumber(drive, "SpeedOfTravel", leftSpeed);
+    m_leftSpeed = leftSpeed;
+    m_rightSpeed = rightSpeed;
   }
 
-  /**
-   * Controls the drivetrain with raw voltage values
-   *
-   * @param leftVoltage  voltage fed to left side
-   * @param rightVoltage voltage fed to right side
-   */
-  public void tankDriveVolts(double leftVoltage, double rightVoltage) {
-    backLeft.setVoltage(leftVoltage);
-    backRight.setVoltage(rightVoltage);
-    drivetrain.feed();
-  }
-
-  public void arcadeDrive(double fwd, double rot) {
-    drive.arcadeDrive(fwd, rot);
-  }
-
-  public void setMaxOutput(double maxOutput) {
-    drive.setMaxOutput(maxOutput);
-  }
 
   //Sensor Methods
 
@@ -139,62 +104,14 @@ public class Drive extends SubsystemBase {
     return ahrs.getYaw();
   }
 
-  public double getPitch() {
-    return ahrs.getPitch();
-  }
-
-  public double getRoll() {
-    return ahrs.getRoll();
-  }
-
-  public void zeroHeading() {
-    ahrs.reset();
-  }
-
-  public void resetOdometry(Pose2d pose) {
-    //m_odometry.resetPosition(pose, getHeading());
-    m_odometry.resetPosition(m_odometry.getPoseMeters(), getHeading());
-  }
-
-  /**
-   * @return the odometry
-   */
-  public DifferentialDriveOdometry getOdometry() {
-    return m_odometry;
-  }
-
-  /**
-   * @return the kinematics
-   */
-  public DifferentialDriveKinematics getKinematics() {
-    return m_kinematics;
-  }
-
-  public SimpleMotorFeedforward getFeedforward() {
-    return m_feedforward;
-  }
-
-  /**
-   * @return the leftPidController
-   */
-  public PIDController getLeftPidController() {
-    return leftPidController;
-  }
-
-  /**
-   * @return the rightPidController
-   */
-  public PIDController getRightPidController() {
-    return rightPidController;
-  }
 
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
-    TestingDashboard.getInstance().updateString(drive, "Heading", getHeading().toString());
-    TestingDashboard.getInstance().updateNumber(drive, "LeftEncoderDistance", leftEncoder.getDistance());
-    TestingDashboard.getInstance().updateNumber(drive, "RightEncoderDistance", rightEncoder.getDistance());
     TestingDashboard.getInstance().updateNumber(drive, "CurrentYawAngle", ahrs.getYaw());
+
+    TestingDashboard.getInstance().updateNumber(drive, "m_leftSpeed", m_leftSpeed);
+    TestingDashboard.getInstance().updateNumber(drive, "m_rightSpeed", m_rightSpeed);
   }
 
   @Override
