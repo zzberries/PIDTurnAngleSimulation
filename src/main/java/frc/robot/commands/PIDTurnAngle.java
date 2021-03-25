@@ -40,7 +40,7 @@ public class PIDTurnAngle extends PIDCommand {
             output = -MAX_SPEED;
           }
             
-          m_drive.tankDrive(output, -output);
+          m_drive.tankDrive(-output, output);
         });
     // Use addRequirements() here to declare subsystem dependencies.
     // Configure additional PID options by calling `getController` here.

@@ -108,10 +108,12 @@ public class Drive extends SubsystemBase {
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
+    ahrs.update(0.02, m_rightSpeed);
+
     TestingDashboard.getInstance().updateNumber(drive, "CurrentYawAngle", ahrs.getYaw());
 
     TestingDashboard.getInstance().updateNumber(drive, "m_leftSpeed", m_leftSpeed);
-    TestingDashboard.getInstance().updateNumber(drive, "m_rightSpeed", m_rightSpeed);
+    TestingDashboard.getInstance().updateNumber(drive, "m_rightSpeed", m_rightSpeed);  
   }
 
   @Override
